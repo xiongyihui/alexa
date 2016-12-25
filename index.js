@@ -6,7 +6,7 @@ const avs = new AVS({
     clientId: 'amzn1.application-oa2-client.d4af894584a748a8af9dd3c1a956be76',
     deviceId: 'Alexa',
     deviceSerialNumber: 86,
-    redirectUri: `${window.location.protocol}//${window.location.host}`
+    redirectUri: location.href.replace(location.hash, "")
 });
 window.avs = avs;
 
