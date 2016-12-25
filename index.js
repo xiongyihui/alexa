@@ -196,6 +196,7 @@ function startUserMedia(stream) {
             case 'ready':
                 isRecognizerReady = true;
                 console.log('recognizer is ready');
+                log('Keyword spotting is ready');
                 break;
             case 'recognized':
                 console.log(event.data.hyp);
