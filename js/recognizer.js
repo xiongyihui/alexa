@@ -26,7 +26,7 @@ function init() {
     buffer = new Module.AudioBuffer()
     var config = new Module.Config()
 
-    config.push_back(["-kws_threshold", "1e-32"])
+    config.push_back(["-kws_threshold", "1e-35"])
     config.push_back(["-vad_threshold", "6"])
     recognizer = new Module.Recognizer(config)
     config.delete()

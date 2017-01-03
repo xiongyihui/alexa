@@ -5,44 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.1/build/pure-min.css">
     <link rel="stylesheet" href="css/fontello.css">
-    <link rel="stylesheet" href="css/animation.css">
     <style>
         body {
+            margin: auto;
+            text-align: center;
             color: white;
             background: #008457;
         }
         
-        .content {
-            max-width: 800px;
-            margin: auto;
-            text-align: center;
-        }
-        
-        .log {
-            max-width: 600px;
-            height: 400px;
-            margin: auto;
-            overflow: auto;
-        }
-        
-        #mic {
-            color: #00AA72;
-            font-size: 4rem;
-        }
-        
-        #progress {
-            display: none;
-            font-size: 4rem;
+        .pure-button {
+            margin-top: 10%;
+            color: white;
+            background: #FF9900;
         }
         
         .footer {
-            position: fixed;
+            position: absolute;
             right: 0;
             bottom: 0;
             left: 0;
             padding: 1rem;
             text-align: center;
-            background: #008457;
         }
         
         .footer-link {
@@ -54,31 +37,34 @@
 </head>
 
 <body>
-    <div class="content">
-        <h1>
-            <spin class="icon-chat">Alexa</spin>
-        </h1>
-        <p>Hands-free voice interaction web app using pocketsphinx.js and Alexa Voice Service</p>
-        <div>
-            <spin id="mic" class="icon-mic"></spin>
-            <spin id="progress" class="icon-spin5 animate-spin"></spin>
-        </div>
-    </div>
-    <div class="log">
-        <ul id="log"></ul>
-        <ul id="audioLog"></ul>
-    </div>
+    <h1>
+        <spin class="icon-chat"></spin>Alexa
+    </h1>
+    <p>Hands-free voice interaction web app using pocketsphinx.js and Alexa Voice Service</p>
+    <button id="login" class="button-cta pure-button"><spin class="icon-amazon">Login</spin></button>
     <div class="footer">
         <a href="https://github.com/xiongyihui/alexa" class="footer-link">
             <i class="icon-github-circled"></i>
         </a>&copy; 2016 Yihui Xiong</div>
+
+
+    <script src="js/avs.js"></script>
     <script>
         if (window.location.protocol != "https:" && window.location.host.indexOf('127.0.0.1') < 0)
             window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+
+        var avs = new AVS({
+            debug: true,
+            clientId: 'amzn1.application-oa2-client.d4af894584a748a8af9dd3c1a956be76',
+            deviceId: 'Alexa',
+            deviceSerialNumber: 86,
+            redirectUri: location.href.replace(location.hash, "").replace("/login.html", ""),
+        });
+
+        document.getElementById('login').addEventListener('click', function() {
+            avs.login();
+        });
     </script>
-    <script src="js/vad.js"></script>
-    <script src="js/avs.js"></script>
-    <script src="js/app.js"></script>
     <script>
         (function(i, s, o, g, r, a, m) {
             i['GoogleAnalyticsObject'] = r;
@@ -95,6 +81,7 @@
         ga('create', 'UA-88107707-2', 'auto');
         ga('send', 'pageview');
     </script>
+
 </body>
 
 </html>

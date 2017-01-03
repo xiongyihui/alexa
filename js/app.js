@@ -1,4 +1,4 @@
-const AVS = require('alexa-voice-service');
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 const player = AVS.Player;
 
 const avs = new AVS({
@@ -10,76 +10,21 @@ const avs = new AVS({
 });
 window.avs = avs;
 
-avs.on(AVS.EventTypes.TOKEN_SET, () => {
-    loginBtn.disabled = true;
-    logoutBtn.disabled = false;
-    // startRecording.disabled = false;
-    // stopRecording.disabled = true;
-});
-
-avs.on(AVS.EventTypes.RECORD_START, () => {
-    // startRecording.disabled = true;
-    // stopRecording.disabled = false;
-});
-
-avs.on(AVS.EventTypes.RECORD_STOP, () => {
-    // startRecording.disabled = false;
-    // stopRecording.disabled = true;
-});
+var recogizer = undefined;
+var state = 0;
 
 avs.on(AVS.EventTypes.LOGOUT, () => {
-    loginBtn.disabled = false;
-    logoutBtn.disabled = true;
-    // startRecording.disabled = true;
-    // stopRecording.disabled = true;
+    login();
 });
 
 avs.on(AVS.EventTypes.TOKEN_INVALID, () => {
     console.log('invalid token')
-        // avs.logout()
-        // .then(login)
+    avs.logout()
+        .then(login)
 });
 
 avs.on(AVS.EventTypes.LOG, log);
 avs.on(AVS.EventTypes.ERROR, logError);
-
-avs.player.on(AVS.Player.EventTypes.LOG, log);
-avs.player.on(AVS.Player.EventTypes.ERROR, logError);
-
-avs.player.on(AVS.Player.EventTypes.PLAY, () => {
-    playAudio.disabled = true;
-    replayAudio.disabled = true;
-    pauseAudio.disabled = false;
-    stopAudio.disabled = false;
-});
-
-avs.player.on(AVS.Player.EventTypes.ENDED, () => {
-    playAudio.disabled = true;
-    replayAudio.disabled = false;
-    pauseAudio.disabled = true;
-    stopAudio.disabled = true;
-});
-
-avs.player.on(AVS.Player.EventTypes.STOP, () => {
-    playAudio.disabled = true;
-    replayAudio.disabled = false;
-    pauseAudio.disabled = false;
-    stopAudio.disabled = false;
-});
-
-avs.player.on(AVS.Player.EventTypes.PAUSE, () => {
-    playAudio.disabled = false;
-    replayAudio.disabled = false;
-    pauseAudio.disabled = true;
-    stopAudio.disabled = true;
-});
-
-avs.player.on(AVS.Player.EventTypes.REPLAY, () => {
-    playAudio.disabled = true;
-    replayAudio.disabled = true;
-    pauseAudio.disabled = false;
-    stopAudio.disabled = false;
-});
 
 function log(message) {
     logOutput.innerHTML = `<li>LOG: ${message}</li>` + logOutput.innerHTML;
@@ -182,15 +127,37 @@ function toDataView(raw) {
     return view;
 }
 
+function startRecognizer() {
+    console.log('start recognizer');
+    state = 0;
+    recognizer.postMessage({ command: 'start' });
+
+    progressIcon.style.display = 'none';
+    micIcon.style.color = '#00AA72';
+    micIcon.style.display = 'block';
+}
+
+function stopRecognizer() {
+    state = 1;
+    recognizer.postMessage({ command: 'stop' });
+    micIcon.style.color = 'white';
+}
+
+function startUploading() {
+    state = 2;
+    micIcon.style.display = 'none';
+    progressIcon.style.display = 'block';
+}
+
 // Define function called by getUserMedia 
 function startUserMedia(stream) {
     // Create MediaStreamAudioSourceNode
     var source = audioContext.createMediaStreamSource(stream);
     var innputSampleRate = source.context.sampleRate;
     var outputSampleRate = 16000;
-    var stage = 0;
 
-    var recognizer = new Worker("js/recognizer.js");
+    log('Loading keywrod recogizer...');
+    recognizer = new Worker("js/recognizer.js");
     recognizer.onmessage = function(event) {
         switch (event.data.status) {
             case 'ready':
@@ -200,8 +167,7 @@ function startUserMedia(stream) {
                 break;
             case 'recognized':
                 console.log(event.data.hyp);
-                stage = 1;
-                recognizer.postMessage({ command: 'stop' });
+                stopRecognizer();
                 break;
             case 'error':
                 console.log(event.data.command + ' failed');
@@ -213,13 +179,19 @@ function startUserMedia(stream) {
 
 
     var utterance = [];
+    var activities = Array(64);
+    var activityIndex = 0;
+
+    for (let i = 0; i < activities.length; i++) {
+        activities[i] = 0;
+    }
 
     // Setup options
     var options = {
         source: source,
         voice_stop: function() { console.log('voice_stop'); },
         voice_start: function() { console.log('voice_start'); },
-        voice_available: (data, state) => {
+        voice_available: (data, active) => {
 
             // preprocessAudio(data);
             data = downsampleBuffer(data, innputSampleRate, outputSampleRate);
@@ -228,19 +200,30 @@ function startUserMedia(stream) {
                 result[i] = data[i] * 32766;
             }
 
-            if (stage == 0) {
+            activities[activityIndex] = active ? 1 : 0;
+            activityIndex = (activityIndex + 1) % activities.length;
+
+            if (activityIndex == 0) {
+                console.log(activities);
+            }
+
+            if (state == 0) {
                 recognizer.postMessage({ command: 'process', data: result });
-            } else if (stage == 1) {
-                if (state) {
+            } else if (state == 1) {
+                let activeActivities = activities.reduce((a, b) => a + b);
+
+                if (activeActivities > 8 && utterance.length < 900) {
                     utterance.push(result);
                 } else {
-                    stage = 2;
-                    if (utterance.length < 20) {
+                    if (utterance.length < 32) {
                         console.log('too short utterrance, ignore and start recognizer');
-                        stage = 0;
-                        recognizer.postMessage({ command: 'start' });
+                        startRecognizer();
+
+                        utterance = [];
                         return;
                     }
+
+                    startUploading();
 
                     let length = utterance.length;
                     let raw = new Int16Array(length * utterance[0].length);
@@ -263,14 +246,8 @@ function startUserMedia(stream) {
                         // .then(() => avs.player.emptyQueue())
                         // .then(() => avs.player.enqueue(dataView))
                         // .then(() => avs.player.play())
-                        .then(() => {
-                            // console.log('start recognizer');
-                            // stage = 0;
-                            // recognizer.postMessage({ command: 'start' });
-                        })
 
                     var ab = false;
-                    //sendBlob(blob);
                     avs.sendAudio(dataView)
                         .then(({ xhr, response }) => {
 
@@ -367,10 +344,7 @@ function startUserMedia(stream) {
                                         .then(() => avs.player.playQueue())
                                         .then(() => {
                                             console.log('finished');
-
-                                            console.log('start recognizer');
-                                            stage = 0;
-                                            recognizer.postMessage({ command: 'start' });
+                                            startRecognizer();
                                         });
                                 }
                             }
@@ -378,9 +352,7 @@ function startUserMedia(stream) {
                         })
                         .catch(error => {
                             console.error(error);
-                            console.log('start recognizer');
-                            stage = 0;
-                            recognizer.postMessage({ command: 'start' });
+                            startRecognizer();
                         });
                 }
             }
@@ -406,29 +378,12 @@ function requestMic() {
     });
 }
 
-const loginBtn = document.getElementById('login');
-const logoutBtn = document.getElementById('logout');
+// const loginBtn = document.getElementById('login');
+// const logoutBtn = document.getElementById('logout');
 const logOutput = document.getElementById('log');
 const audioLogOutput = document.getElementById('audioLog');
-// const startRecording = document.getElementById('startRecording');
-// const stopRecording = document.getElementById('stopRecording');
-const stopAudio = document.getElementById('stopAudio');
-const pauseAudio = document.getElementById('pauseAudio');
-const playAudio = document.getElementById('playAudio');
-const replayAudio = document.getElementById('replayAudio');
-
-/*
-// If using client secret
-avs.getCodeFromUrl()
- .then(code => avs.getTokenFromCode(code))
-.then(token => localStorage.setItem('token', token))
-.then(refreshToken => localStorage.setItem('refreshToken', refreshToken))
-.then(() => avs.requestMic())
-.then(() => avs.refreshToken())
-.catch(() => {
-
-});
-*/
+const micIcon = document.getElementById('mic');
+const progressIcon = document.getElementById('progress');
 
 avs.getTokenFromUrl()
     .then(() => avs.getToken())
@@ -441,49 +396,21 @@ avs.getTokenFromUrl()
             avs.setToken(cachedToken);
             requestMic();
         } else {
-            // requestMic();
+            login();
         }
 
 
     });
 
-loginBtn.addEventListener('click', login);
-
-function login(event) {
-    return avs.login()
-        .then(() => avs.requestMic())
-        .catch(() => {});
-
-    /*
-    // If using client secret
-    avs.login({responseType: 'code'})
-    .then(() => avs.requestMic())
-    .catch(() => {});
-    */
+function login() {
+    window.location.href = 'login.html';
 }
-
-logoutBtn.addEventListener('click', logout);
 
 function logout() {
     return avs.logout()
         .then(() => {
             localStorage.removeItem('token');
-            window.location.hash = '';
+            login();
         });
 }
-
-stopAudio.addEventListener('click', (event) => {
-    avs.player.stop();
-});
-
-pauseAudio.addEventListener('click', (event) => {
-    avs.player.pause();
-});
-
-playAudio.addEventListener('click', (event) => {
-    avs.player.play();
-});
-
-replayAudio.addEventListener('click', (event) => {
-    avs.player.replay();
-});
+},{}]},{},[1]);
