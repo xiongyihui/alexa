@@ -1,11 +1,11 @@
-Alexa on Web
-============
+Web Alexa
+=========
 
-Hand-free Voice Interaction web app using Alexa Voice Service and pocketsphinx.js.
+Hands-free Voice Interaction web app using Alexa Voice Service and pocketsphinx.js.
 
-Go to [https://xiongyihui.github.io/alexa](https://xiongyihui.github.io/alexa) to have a try.
+Go to [https://xiongyihui.github.io/alexa](https://xiongyihui.github.io/alexa/login.html) to have a try.
 
-### Creds
+### Credits
 + [pocketsphinx.js](https://github.com/syl22-00/pocketsphinx.js)
 + [vad.js](https://github.com/kdavis-mozilla/vad.js)
 + [alexa-voice-service.js](https://github.com/miguelmota/alexa-voice-service.js)
