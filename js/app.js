@@ -27,11 +27,11 @@ avs.on(AVS.EventTypes.LOG, log);
 avs.on(AVS.EventTypes.ERROR, logError);
 
 function log(message) {
-    logOutput.innerHTML = `<li>LOG: ${message}</li>` + logOutput.innerHTML;
+    logOutput.innerHTML = `<li>I: ${message}</li>` + logOutput.innerHTML;
 }
 
 function logError(error) {
-    logOutput.innerHTML = `<li>ERROR: ${error}</li>` + logOutput.innerHTML;
+    logOutput.innerHTML = `<li>E: ${error}</li>` + logOutput.innerHTML;
 }
 
 function logAudioBlob(blob, message) {
@@ -48,7 +48,13 @@ function logAudioBlob(blob, message) {
         aDownload.download = filename;
         aDownload.textContent = `download`;
 
-        audioLogOutput.innerHTML = `<li>${message}: ${a.outerHTML} ${aDownload.outerHTML}</li>` + audioLogOutput.innerHTML;
+        const sound = document.createElement('audio');
+        sound.id = filename;
+        sound.controls = 'controls';
+        sound.src = url;
+        sound.type = blob.type.indexOf('mpeg') > -1 ? 'audio/mpeg' : 'audio/x-wav';
+
+        audioLogOutput.innerHTML = `<li>${message}: ${sound.outerHTML}</li>` + audioLogOutput.innerHTML;
         resolve(blob);
     });
 }
@@ -242,7 +248,7 @@ function startUserMedia(stream) {
 
 
                     avs.audioToBlob(dataView)
-                        .then(blob => logAudioBlob(blob, 'VOICE'))
+                        .then(blob => logAudioBlob(blob, 'U'))
                         // .then(() => avs.player.emptyQueue())
                         // .then(() => avs.player.enqueue(dataView))
                         // .then(() => avs.player.play())
@@ -300,7 +306,7 @@ function startUserMedia(stream) {
                                             const audio = findAudioFromContentId(contentId);
                                             if (audio) {
                                                 avs.audioToBlob(audio)
-                                                    .then(blob => logAudioBlob(blob, 'RESPONSE'));
+                                                    .then(blob => logAudioBlob(blob, 'A'));
                                                 promises.push(avs.player.enqueue(audio));
                                             }
                                         }
